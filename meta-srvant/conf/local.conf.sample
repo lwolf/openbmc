@@ -12,7 +12,7 @@
 #
 # Machine Selection
 #
-MACHINE ??= "romulus"
+MACHINE ??= "srvant-pi"
 
 #
 # Where to place downloads
