@@ -12,7 +12,7 @@
 #
 # Machine Selection
 #
-MACHINE ??= "srvant-pi"
+MACHINE ??= "srvant-pi-a13"
 
 #
 # Where to place downloads
@@ -63,7 +63,7 @@ MACHINE ??= "srvant-pi"
 # Ultimately when creating custom policy, people will likely end up subclassing
 # these defaults.
 #
-DISTRO ?= "openbmc-romulus"
+DISTRO ?= "openbmc-phosphor"
 # As an example of a subclass there is a "bleeding" edge policy configuration
 # where many versions are set to the absolute latest code from the upstream 
 # source control systems. This is just mentioned here as an example, its not
