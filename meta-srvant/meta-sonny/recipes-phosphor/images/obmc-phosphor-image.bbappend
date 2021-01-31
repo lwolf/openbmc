@@ -1,0 +1,1 @@
+IMAGE_INSTALL_append = " screen tmux strace pciutils "
