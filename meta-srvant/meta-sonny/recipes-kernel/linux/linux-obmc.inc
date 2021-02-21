@@ -9,8 +9,13 @@ KBUILD_DEFCONFIG_sonny ?= "sunxi_defconfig"
 
 KSRC ?= "git://github.com/lwolf/linux;protocol=git;branch=${KBRANCH}"
 SRC_URI = "${KSRC}"
+# SRC_URI += " file://defconfig"
 
 FILESEXTRAPATHS_prepend_linux-obmc := "${THISDIR}/linux-obmc:"
+
+SRC_URI += "file://kernel-debug.cfg \
+            file://i2c-ds3232-rtc.cfg \
+            file://rtl-network.cfg"
 
 LINUX_VERSION_EXTENSION ?= "-${SRCREV}"
 

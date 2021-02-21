@@ -1,7 +1,7 @@
-KBRANCH ?= "playground-5.8.17"
-LINUX_VERSION ?= "5.8.17"
+KBRANCH ?= "playground-5.10.14"
+LINUX_VERSION ?= "5.10.14"
 
-SRCREV="184486c15e07d55df3dac132358fbd8818d38726"
+SRCREV="e01c549e4e82f1e7382bb529d4aaebfcbb635b89"
 
 require linux-obmc.inc
 
