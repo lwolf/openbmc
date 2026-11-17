@@ -1,0 +1,404 @@
+// SPDX-License-Identifier: GPL-2.0+
+/*
+ * ASRock Rack ROMED8-2T BMC (AST2500)
+ *
+ * Derived from aspeed-bmc-asrock-romed8hm3.dts. Board facts below were taken
+ * from the vendor BMC firmware (ROMED8-2T 3.08.00) where noted; items marked
+ * "UNVERIFIED" still need confirmation on real hardware.
+ */
+/dts-v1/;
+
+#include "aspeed-g5.dtsi"
+#include <dt-bindings/gpio/aspeed-gpio.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+
+/{
+	model = "ASRock ROMED8-2T BMC";
+	compatible = "asrock,romed8-2t-bmc", "aspeed,ast2500";
+
+	aliases {
+		serial4 = &uart5;
+		i2c20 = &i2c1_mux_ch0;
+		i2c21 = &i2c1_mux_ch1;
+		i2c22 = &i2c1_mux_ch2;
+		i2c23 = &i2c1_mux_ch3;
+		i2c24 = &i2c7_mux_ch0;
+		i2c25 = &i2c7_mux_ch1;
+		i2c26 = &i2c7_mux_ch2;
+		i2c27 = &i2c7_mux_ch3;
+	};
+
+	chosen {
+		stdout-path = &uart5;
+		bootargs = "console=tty0 console=ttyS4,115200 earlycon";
+	};
+
+	/* 512 MiB, same as vendor device tree */
+	memory@80000000 {
+		reg = <0x80000000 0x20000000>;
+	};
+
+
+	leds {
+		compatible = "gpio-leds";
+
+		/* UNVERIFIED: pin assumed identical to ROMED8HM3 (GPIOH6) */
+		heartbeat {
+			gpios = <&gpio ASPEED_GPIO(H, 6) GPIO_ACTIVE_LOW>;
+			linux,default-trigger = "timer";
+		};
+
+		/* UNVERIFIED: pin assumed identical to ROMED8HM3 (GPIOZ2) */
+		system-fault {
+			gpios = <&gpio ASPEED_GPIO(Z, 2) GPIO_ACTIVE_HIGH>;
+			panic-indicator;
+		};
+	};
+
+	iio-hwmon {
+		compatible = "iio-hwmon";
+		io-channels = <&adc 0>, <&adc 1>, <&adc 2>, <&adc 3>,
+			<&adc 4>, <&adc 5>, <&adc 6>, <&adc 7>,
+			<&adc 8>, <&adc 9>, <&adc 10>, <&adc 11>,
+			<&adc 12>, <&adc 13>, <&adc 14>, <&adc 15>;
+	};
+};
+
+/* 64 MiB SPI-NOR: vendor image ROMED8-2T_3.08.00.ima is 64 MiB */
+&fmc {
+	status = "okay";
+	flash@0 {
+		status = "okay";
+		m25p,fast-read;
+		label = "bmc";
+		spi-max-frequency = <50000000>; /* 50 MHz, as vendor */
+#include "openbmc-flash-layout-64.dtsi"
+	};
+};
+
+&uart5 {
+	status = "okay";
+};
+
+/* UNVERIFIED: host SOL port; matches other ASRock boards (COM2, 0x2f8/IRQ3) */
+&vuart {
+	status = "okay";
+	aspeed,lpc-io-reg = <0x2f8>;
+	aspeed,lpc-interrupts = <3 IRQ_TYPE_LEVEL_HIGH>;
+};
+
+/* Dedicated IPMI LAN port: RGMII PHY on MDIO1 (vendor DT: RGMII1 + MDIO1) */
+&mac0 {
+	status = "okay";
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_rgmii1_default &pinctrl_mdio1_default>;
+
+	nvmem-cells = <&eth0_macaddress>;
+	nvmem-cell-names = "mac-address";
+};
+
+/*
+ * Shared LAN via NC-SI to the Intel X550-AT2 (vendor: NCSI default interface
+ * eth1). UNVERIFIED: RMII2 pinmux and NC-SI package/channel selection.
+ */
+&mac1 {
+	status = "okay";
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_rmii2_default>;
+	use-ncsi;
+
+	nvmem-cells = <&eth1_macaddress>;
+	nvmem-cell-names = "mac-address";
+};
+
+&i2c0 {
+	status = "okay";
+};
+
+/* Hardware monitoring bus (vendor: NCT6779D, PCA9545A mux) */
+&i2c1 {
+	status = "okay";
+
+	/* Nuvoton NCT6779D super-I/O, hwmon over I2C */
+	nct6779@2d {
+		compatible = "nuvoton,nct6779";
+		reg = <0x2d>;
+	};
+
+	i2c-mux@70 {
+		compatible = "nxp,pca9545";
+		reg = <0x70>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		i2c-mux-idle-disconnect;
+
+		i2c1_mux_ch0: i2c@0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0>;
+		};
+
+		i2c1_mux_ch1: i2c@1 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <1>;
+
+			/* "MB Temp" / "Card Side Temp" */
+			w83773g@4c {
+				compatible = "nuvoton,w83773g";
+				reg = <0x4c>;
+			};
+		};
+
+		/* M.2_1 NVMe-MI endpoint (0x6a) */
+		i2c1_mux_ch2: i2c@2 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <2>;
+		};
+
+		/* M.2_2 NVMe-MI endpoint (0x6a) */
+		i2c1_mux_ch3: i2c@3 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <3>;
+		};
+	};
+};
+
+/* PSU PMBus (PSU1 0x58, PSU2 0x59); populated by entity-manager on demand */
+&i2c2 {
+	status = "okay";
+};
+
+&i2c3 {
+	status = "okay";
+};
+
+&i2c4 {
+	status = "okay";
+};
+
+&i2c5 {
+	status = "okay";
+};
+
+/* SMBus to host (vendor SMBUS_BUS_NUM) */
+&i2c6 {
+	status = "okay";
+};
+
+/* FRU EEPROM + DIMM SPD mux */
+&i2c7 {
+	status = "okay";
+
+	/* Baseboard FRU eeprom; vendor reads MACs at 0x3f80 / 0x3f88 */
+	eeprom@51 {
+		compatible = "st,24c128", "atmel,24c128";
+		reg = <0x51>;
+		pagesize = <16>;
+
+		nvmem-layout {
+			compatible = "fixed-layout";
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			eth0_macaddress: macaddress@3f80 {
+				reg = <0x3f80 6>;
+			};
+
+			eth1_macaddress: macaddress@3f88 {
+				reg = <0x3f88 6>;
+			};
+		};
+	};
+
+	/* DDR4 DIMM thermal sensors, channels A-D on ch0, E-H on ch1 */
+	i2c-mux@70 {
+		compatible = "nxp,pca9545";
+		reg = <0x70>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		i2c-mux-idle-disconnect;
+
+		i2c7_mux_ch0: i2c@0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0>;
+		};
+
+		i2c7_mux_ch1: i2c@1 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <1>;
+		};
+
+		i2c7_mux_ch2: i2c@2 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <2>;
+		};
+
+		i2c7_mux_ch3: i2c@3 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <3>;
+		};
+	};
+};
+
+/* IPMB (vendor PRIMARY_IPMB_I2C_BUS_NUM) */
+&i2c8 {
+	status = "okay";
+};
+
+&i2c9 {
+	status = "okay";
+};
+
+&video {
+	status = "okay";
+};
+
+&vhub {
+	status = "okay";
+};
+
+&lpc_ctrl {
+	status = "okay";
+};
+
+&lpc_snoop {
+	status = "okay";
+	snoop-ports = <0x80>;
+};
+
+&kcs3 {
+	status = "okay";
+	aspeed,lpc-io-reg = <0xca2>;
+};
+
+/*
+ * Seven fan headers, each with two tach inputs (vendor sensors FANn and
+ * FANn_2 read tach n and n+8). UNVERIFIED: PWM channel per header.
+ */
+&pwm_tacho {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_pwm0_default
+		&pinctrl_pwm1_default
+		&pinctrl_pwm2_default
+		&pinctrl_pwm3_default
+		&pinctrl_pwm4_default
+		&pinctrl_pwm5_default
+		&pinctrl_pwm6_default>;
+
+	fan@0 {
+		reg = <0x00>;
+		aspeed,fan-tach-ch = /bits/ 8 <0x00 0x08>;
+	};
+
+	fan@1 {
+		reg = <0x01>;
+		aspeed,fan-tach-ch = /bits/ 8 <0x01 0x09>;
+	};
+
+	fan@2 {
+		reg = <0x02>;
+		aspeed,fan-tach-ch = /bits/ 8 <0x02 0x0a>;
+	};
+
+	fan@3 {
+		reg = <0x03>;
+		aspeed,fan-tach-ch = /bits/ 8 <0x03 0x0b>;
+	};
+
+	fan@4 {
+		reg = <0x04>;
+		aspeed,fan-tach-ch = /bits/ 8 <0x04 0x0c>;
+	};
+
+	fan@5 {
+		reg = <0x05>;
+		aspeed,fan-tach-ch = /bits/ 8 <0x05 0x0d>;
+	};
+
+	fan@6 {
+		reg = <0x06>;
+		aspeed,fan-tach-ch = /bits/ 8 <0x06 0x0e>;
+	};
+};
+
+/*
+ * Line names follow ROMED8HM3. Confirmed from vendor firmware: D0/D1 power
+ * button in/out, D3 reset out, J0 BMC_READY, J1 BIOS flash mux, AA2/AA3
+ * PROCHOT redirection, AB3 SMI. The rest is UNVERIFIED.
+ */
+&gpio {
+	status = "okay";
+	gpio-line-names =
+		/*  A */ "LOCATORLED_STATUS_N", "BMC_MAC2_INTB", "NMI_BTN_N", "BMC_NMI",
+			"", "", "", "",
+		/*  B */ "POST_COMPLETE_N", "", "", "", "", "", "", "",
+		/*  C */ "", "", "", "", "PCIE_HP_SEL_N", "PCIE_SATA_SEL_N", "LOCATORBTN", "",
+		/*  D */ "BMC_PSIN", "BMC_PSOUT", "BMC_RESETCON", "RESETCON",
+			"", "", "", "PSU_FAN_FAIL_N",
+		/*  E */ "", "", "", "", "", "", "", "",
+		/*  F */ "NIC_PWR_GOOD", "PRSNTB0", "PRSNTB1", "PRSNTB2",
+			"PRSNTB3", "", "3VSB_PCIE1_PG", "12V_PCIE1_PG",
+		/*  G */ "HWM_BAT_EN", "CHASSIS_ID0", "CHASSIS_ID1", "CHASSIS_ID2",
+			"BMC_ALERT1_N_R", "BMC_ALERT2_N_R", "BMC_ALERT3_N", "BMC_ALERT4_N",
+		/*  H */ "X24_C1_PRSNT", "X24_C2_PRSNT", "X24_C3_PRSNT", "FM_MEM_THERM_EVENT_BMC_R_N",
+			"FACMODE", "BMC_RTCRST", "BMC_HB_LED_N", "BMC_CASEOPEN",
+		/*  I */ "", "", "", "", "", "", "", "",
+		/*  J */ "BMC_READY", "BMC_PCH_BIOS_CS_N", "", "P0_MA_DDR_QS_CS_N",
+			"", "", "", "",
+		/*  K */ "", "", "", "", "", "", "", "",
+		/*  L */ "", "", "", "", "", "", "", "",
+		/*  M */ "", "", "MEZZ_PWRBRK_N", "OCP_HP_RST_EN",
+			"MAIN_PWR_EN_G", "BMC_MAIN_EN", "AUX_PWR_EN_G", "BMC_AUX_EN",
+		/*  N */ "", "", "", "", "", "", "", "",
+		/*  O */ "", "", "", "", "", "", "", "",
+		/*  P */ "", "", "", "", "", "", "", "",
+		/*  Q */ "", "", "", "",
+			"BMC_SMB_PRESENT_1_N", "BMC_SMB_PRESENT_2_N",
+			"BMC_SMB_PRESENT_3_N", "BMC_PCIE_WAKE_N",
+		/*  R */ "", "", "THERMALTRIP_CLEAR_N", "", "", "", "", "",
+		/*  S */ "", "", "", "", "", "", "", "",
+		/*  T */ "", "", "", "", "", "", "", "",
+		/*  U */ "", "", "", "", "", "", "", "",
+		/*  V */ "", "", "", "", "", "", "", "",
+		/*  W */ "", "", "", "", "", "", "", "",
+		/*  X */ "", "", "", "", "", "", "", "",
+		/*  Y */ "SLP_S3", "SLP_S4_S5", "NODE_ID_1", "NODE_ID_2", "", "", "", "",
+		/*  Z */ "", "", "SYSTEM_FAULT_LED_N", "FAST_THROTTLE_N",
+			"", "", "", "",
+		/* AA */ "FM_CPU0_IBMC_THERMTRIP_N", "", "PROCHOT_L_G", "",
+			"", "", "", "",
+		/* AB */ "BMC_FORCE_SELFREFRESH", "PWRGD_OUT", "", "IRQ_BMC_PCH_SMI_LPC_N",
+			"", "", "", "",
+		/* AC */ "", "", "", "", "", "", "", "";
+};
+
+&adc {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_adc0_default
+		&pinctrl_adc1_default
+		&pinctrl_adc2_default
+		&pinctrl_adc3_default
+		&pinctrl_adc4_default
+		&pinctrl_adc5_default
+		&pinctrl_adc6_default
+		&pinctrl_adc7_default
+		&pinctrl_adc8_default
+		&pinctrl_adc9_default
+		&pinctrl_adc10_default
+		&pinctrl_adc11_default
+		&pinctrl_adc12_default
+		&pinctrl_adc13_default
+		&pinctrl_adc14_default
+		&pinctrl_adc15_default>;
+};
