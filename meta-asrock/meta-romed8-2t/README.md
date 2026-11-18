@@ -67,6 +67,7 @@ The AMI web UI will not take an OpenBMC image. Write `image-bmc` to the
 64 MiB BMC SPI chip either with an external programmer (SOIC-8 clip +
 flashrom) or with ASRock's `socflash` from the host. Keep the vendor dump
 to roll back.
+
 ## Where the board facts come from
 
 Extracted from the vendor firmware `ROMED8-2T(03.08.00)BMC.zip`
