@@ -5,12 +5,68 @@ AST2500 BMC, single-socket SP3 (EPYC 7002/7003). Layer derived from
 
 ## Build
 
+Tested so far: `bitbake virtual/kernel` (kernel 6.18.63 + DTB) builds clean.
+The full image has not been built yet.
+
+### Host requirements
+
+- Linux x86_64. Ubuntu 22.04/24.04 or Debian 12 work. Native, a VM, or a
+  container with a bind-mounted build dir all work.
+- Disk: about 100 GB free for `build/`, downloads and sstate (rm_work keeps
+  the peak lower). It ran out at about 30 GB.
+- RAM: 16 GB minimum, 32 GB+ is better (Rust/LLVM links are heavy).
+- Time: about 3-5 h on 16 cores from cold, 10+ h on 4 cores.
+- Run as a normal user. bitbake refuses to run as root.
+
+### Host packages (Ubuntu/Debian)
+
 ```sh
-. setup romed8-2t
-bitbake obmc-phosphor-image
-# output: tmp/deploy/images/romed8-2t/image-bmc (64 MiB)
+sudo apt-get install -y gawk wget git diffstat unzip texinfo gcc \
+  build-essential chrpath socat cpio python3 python3-pip python3-pexpect \
+  xz-utils debianutils iputils-ping python3-git python3-jinja2 \
+  python3-subunit zstd liblz4-tool file locales libacl1
+sudo locale-gen en_US.UTF-8
 ```
 
+### Build
+
+```sh
+git clone -b claude/project-thread-ia37kk https://github.com/lwolf/openbmc
+cd openbmc
+export LANG=en_US.UTF-8
+. setup romed8-2t build/romed8-2t
+
+# optional, recommended: lower peak disk, keep caches outside build/
+cat >> conf/local.conf <<'CONF'
+INHERIT += "rm_work"
+DL_DIR = "${TOPDIR}/../../downloads"
+SSTATE_DIR = "${TOPDIR}/../../sstate"
+CONF
+
+bitbake obmc-phosphor-image
+```
+
+To resume after an interruption, re-run the same `bitbake` line. Finished
+tasks are reused.
+
+### Output
+
+`build/romed8-2t/tmp/deploy/images/romed8-2t/`:
+
+| File | Use |
+|---|---|
+| `image-bmc` | full 64 MiB flash image (u-boot + kernel + rootfs + rwfs) |
+| `image-u-boot`, `image-kernel`, `image-rofs` | individual partitions |
+| `obmc-phosphor-image-romed8-2t.static.mtd.tar` | update tarball for a running OpenBMC |
+
+Check that `image-bmc` is exactly 67108864 bytes before flashing.
+
+### Flashing (do it together, after the vendor flash dump)
+
+The AMI web UI will not take an OpenBMC image. Write `image-bmc` to the
+64 MiB BMC SPI chip either with an external programmer (SOIC-8 clip +
+flashrom) or with ASRock's `socflash` from the host. Keep the vendor dump
+to roll back.
 ## Where the board facts come from
 
 Extracted from the vendor firmware `ROMED8-2T(03.08.00)BMC.zip`
