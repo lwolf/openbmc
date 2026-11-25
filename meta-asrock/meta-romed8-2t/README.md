@@ -5,8 +5,9 @@ AST2500 BMC, single-socket SP3 (EPYC 7002/7003). Layer derived from
 
 ## Build
 
-Tested so far: `bitbake virtual/kernel` (kernel 6.18.63 + DTB) builds clean.
-The full image has not been built yet.
+Tested so far: the full `obmc-phosphor-image` builds clean, and `image-bmc`
+boots to a login prompt in QEMU (`ast2500-evb,fmc-model=mx66l51235f`).
+Not yet tested on hardware.
 
 ### Host requirements
 
