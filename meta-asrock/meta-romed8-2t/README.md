@@ -108,7 +108,8 @@ fill gaps):
 
 - [ ] Full SPI dump of the BMC flash (`flashrom` with a clip, or
       `socflash` backup). This is the only way back to the vendor firmware.
-- [ ] `ipmitool mc info` (product ID for `dev_id.json`, set to 0 for now)
+- [x] `ipmitool mc info`: manufacturer 49622, product ID 4096 (0x1000),
+      vendor firmware 2.08; product ID set in `dev_id.json`
 - [ ] `ipmitool fru print`, `ipmitool sdr elist`
 
 After first boot of OpenBMC:
