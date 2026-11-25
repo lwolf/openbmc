@@ -111,7 +111,22 @@ fill gaps):
       `socflash` backup). This is the only way back to the vendor firmware.
 - [x] `ipmitool mc info`: manufacturer 49622, product ID 4096 (0x1000),
       vendor firmware 2.08; product ID set in `dev_id.json`
-- [ ] `ipmitool fru print`, `ipmitool sdr elist`
+- [x] `ipmitool fru print`, `ipmitool sdr elist` (see below)
+
+Checked against the vendor BMC (firmware 2.08) over IPMI, read-only:
+
+- I2C (single-byte reads with Master Write-Read, empty addresses NAK):
+  i2c1 0x2d (NCT6779D) and 0x70 (mux) answer, 0x4c does not (so the
+  W83773G is behind the mux); i2c7 0x51 (EEPROM) and 0x70 (mux) answer;
+  i2c2 0x58/0x59 NAK (no PMBus PSU fitted, PSU sensors read "ns").
+- SDR: 15 voltage rails (3VSB, 5VSB, VCPU, VSOC, VCCM ABCD/EFGH,
+  VPPM ABCD/EFGH, 1.8VSB, 1.8V, LAN_0.83V, BAT, 3V, 5V, 12V), consistent
+  with ADC 0-14; FAN1-7 plus FAN1_2-FAN7_2; 8 DIMM temps (DDR4A-H);
+  CPU, MB, Card Side, Onboard LAN temps; TEMP_TR1/TR2 thermistor inputs.
+- FRU over IPMI is 2048 bytes and does not contain the MACs, so the
+  0x3f80/0x3f88 MAC offsets are still unverified.
+- LAN: only channels 1 and 8 exist, and only channel 1 returns `lan print`
+  (eth0 MAC 9c:6b:00:b6:a2:8a). SOL is enabled at 115200.
 
 After first boot of OpenBMC:
 
