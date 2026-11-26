@@ -1,4 +1,4 @@
-FILESEXTRAPATHS:prepend := "${THISDIR}/${PN}:"
+FILESEXTRAPATHS:prepend := "${THISDIR}/${BPN}:"
 
 SRC_URI += " \
     file://romed8-2t.cfg \

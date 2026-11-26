@@ -1,4 +1,4 @@
-FILESEXTRAPATHS:prepend:romed8-2t := "${THISDIR}/${PN}:"
+FILESEXTRAPATHS:prepend:romed8-2t := "${THISDIR}/${BPN}:"
 
 SRC_URI:append:romed8-2t = " file://led-group-config.json"
 
