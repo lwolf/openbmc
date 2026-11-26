@@ -65,9 +65,10 @@ Check that `image-bmc` is exactly 67108864 bytes before flashing.
 ### Flashing (do it together, after the vendor flash dump)
 
 The AMI web UI will not take an OpenBMC image. Write `image-bmc` to the
-64 MiB BMC SPI chip either with an external programmer (SOIC-8 clip +
-flashrom) or with ASRock's `socflash` from the host. Keep the vendor dump
-to roll back.
+64 MiB BMC SPI chip either from the running host with `culvert` (see
+[FLASHING.md](FLASHING.md): backup, flash and rollback without a
+programmer) or with an external programmer (SPI clip + flashrom). Keep the
+vendor dump to roll back.
 
 ## Where the board facts come from
 
@@ -107,8 +108,9 @@ the ROMED8HM3 GPIO map was reused.
 Before flashing, capture from the vendor BMC (needed for rollback and to
 fill gaps):
 
-- [ ] Full SPI dump of the BMC flash (`flashrom` with a clip, or
-      `socflash` backup). This is the only way back to the vendor firmware.
+- [ ] Full SPI dump of the BMC flash (`culvert read --type=firmware` from
+      the host, see [FLASHING.md](FLASHING.md), or `flashrom` with a clip).
+      This is the only way back to the vendor firmware.
 - [x] `ipmitool mc info`: manufacturer 49622, product ID 4096 (0x1000),
       vendor firmware 2.08; product ID set in `dev_id.json`
 - [x] `ipmitool fru print`, `ipmitool sdr elist` (see below)
